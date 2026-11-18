@@ -1,6 +1,6 @@
 [build]
-  command = "pnpm run build"
-  publish = "dist/public"
+  command = "pnpm --filter @workspace/gente-bonita run build"
+  publish = "artifacts/gente-bonita/dist/public"
 
 [build.environment]
   NODE_VERSION = "20"
