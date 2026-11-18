@@ -1,0 +1,9 @@
+[build]
+  base = "artifacts/gente-bonita"
+  publish = "artifacts/gente-bonita/dist/public"
+  command = "pnpm run build"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
