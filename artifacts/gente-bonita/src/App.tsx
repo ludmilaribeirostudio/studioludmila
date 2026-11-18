@@ -67,6 +67,7 @@ export interface ServiceItem {
   basePrice: number;
   duration: string;
   icon: any;
+  imageKey?: string;
   highlights: string[];
   fullDescription: string;
   pricingSections: ServicePricingSection[];
@@ -107,6 +108,7 @@ const SERVICES: ServiceItem[] = [
     basePrice: 200,
     duration: '2h a 3h',
     icon: Gem,
+    imageKey: 'service_icon_alongamento',
     highlights: [
       'Filamentos de fibra ultrafina de alta pureza',
       'Curvatura C simétrica e ponto de tensão equilibrado',
@@ -149,6 +151,7 @@ const SERVICES: ServiceItem[] = [
     basePrice: 140,
     duration: '1h30 a 2h',
     icon: Scissors,
+    imageKey: 'service_icon_manutencao',
     highlights: [
       'Preservação integral da lâmina ungueal',
       'Reposicionamento do ponto de tensão',
@@ -190,6 +193,7 @@ const SERVICES: ServiceItem[] = [
     basePrice: 130,
     duration: '1h30 a 2h',
     icon: Sparkles,
+    imageKey: 'service_icon_banho_gel',
     highlights: [
       'Blindagem sem alterar o comprimento natural',
       'Evita descamações, lascas e quebras',
@@ -218,6 +222,7 @@ const SERVICES: ServiceItem[] = [
     basePrice: 90,
     duration: '45min a 1h30',
     icon: Brush,
+    imageKey: 'service_icon_manicure_pedicure',
     highlights: [
       'Cutilagem russa combinada ou tradicional delicada',
       'Alicates e brocas esterilizados em autoclave grau cirúrgico',
@@ -247,6 +252,7 @@ const SERVICES: ServiceItem[] = [
     basePrice: 100,
     duration: '1 hora',
     icon: Star,
+    imageKey: 'service_icon_spa_pes',
     highlights: [
       'Escalda-pés aquecido em infusão botânica',
       'Sal grosso e blend de camomila, alecrim e calêndula',
@@ -276,6 +282,7 @@ const SERVICES: ServiceItem[] = [
     basePrice: 90,
     duration: '1 hora',
     icon: Heart,
+    imageKey: 'service_icon_argiloterapia',
     highlights: [
       'Argila branca pura rica em oligoelementos',
       'Blend exclusivo de lavanda, melaleuca e copaíba',
@@ -597,6 +604,33 @@ function Hero() {
   );
 }
 
+function ServiceCardVisual({ service }: { service: ServiceItem }) {
+  const customImg = useSiteImage(service.imageKey as any, '');
+  const Icon = service.icon;
+
+  return (
+    <span
+      className="flex h-11 w-11 sm:h-13 sm:w-13 md:h-15 md:w-15 items-center justify-center rounded-full transition-transform duration-300 group-hover:scale-110 shrink-0 overflow-hidden"
+      style={{
+        border: '2px solid rgba(255, 255, 255, 0.9)',
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.12) 100%)',
+        color: '#FFFFFF',
+        boxShadow: '0 8px 20px rgba(0, 0, 0, 0.25), inset 0 1px 1px #FFFFFF',
+      }}
+    >
+      {customImg ? (
+        <img
+          src={customImg}
+          alt={service.title}
+          className="h-full w-full object-cover rounded-full"
+        />
+      ) : (
+        <Icon className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.8} />
+      )}
+    </span>
+  );
+}
+
 function Services({
   cartItems = [],
   onToggleItem,
@@ -666,18 +700,8 @@ function Services({
                   onKeyDown={(e) => { if (e.key === 'Enter') setActiveModal(service); }}
                   aria-label={`${service.title} - Saiba mais`}
                 >
-                  {/* Ícone 3D Flutuante com Anel Translúcido e Branco */}
-                  <span
-                    className="flex h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 items-center justify-center rounded-full transition-transform duration-300 group-hover:scale-110 shrink-0"
-                    style={{
-                      border: '1.5px solid rgba(255, 255, 255, 0.85)',
-                      background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.12) 100%)',
-                      color: '#FFFFFF',
-                      boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2), inset 0 1px 1px #FFFFFF',
-                    }}
-                  >
-                    <Icon className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.8} />
-                  </span>
+                  {/* Ícone ou Foto Personalizada com Anel Translúcido e Borda Branca */}
+                  <ServiceCardVisual service={service} />
 
                   {/* Título do Serviço em BRANCO com relevo */}
                   <span className="font-serif text-sm sm:text-base md:text-lg font-medium leading-tight text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.45)]">

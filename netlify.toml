@@ -1,11 +1,11 @@
 [build]
-  base = "artifacts/gente-bonita"
-  publish = "dist/public"
-  command = "pnpm run build"
+  command = "pnpm --filter @workspace/gente-bonita run build"
+  publish = "artifacts/gente-bonita/dist/public"
 
 [build.environment]
   NODE_VERSION = "20"
-  PNPM_FLAGS = "--shamefully-hoist"
+  BASE_PATH = "/"
+  PORT = "5173"
 
 [[redirects]]
   from = "/*"

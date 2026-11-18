@@ -8,7 +8,13 @@ export type SiteImageKey =
   | 'about_2'
   | 'cursos_hero'
   | 'cursos_mesa'
-  | 'cursos_bio';
+  | 'cursos_bio'
+  | 'service_icon_alongamento'
+  | 'service_icon_manutencao'
+  | 'service_icon_banho_gel'
+  | 'service_icon_manicure_pedicure'
+  | 'service_icon_spa_pes'
+  | 'service_icon_argiloterapia';
 
 export type SiteImageMeta = {
   key: SiteImageKey;
@@ -36,6 +42,56 @@ export const SITE_IMAGES_REGISTRY: SiteImageMeta[] = [
     description: 'Aparece no rodapé dourado com fundo escuro de todas as páginas.',
     defaultSrc: '/images/logo-white-cropped.png',
     recommendedRatio: 'Horizontal / Transparente em Branco (PNG)',
+  },
+
+  // ÍCONES / FOTOS DOS CARDS DE SERVIÇOS
+  {
+    key: 'service_icon_alongamento',
+    section: 'Cards de Serviços (Fotos / Ícones Redondos)',
+    label: 'Card 1: Alongamento em Fibra',
+    description: 'Foto ou ícone redondo que aparece no topo do card de Alongamento em Fibra.',
+    defaultSrc: '',
+    recommendedRatio: 'Foto Quadrada ou Redonda (1:1)',
+  },
+  {
+    key: 'service_icon_manutencao',
+    section: 'Cards de Serviços (Fotos / Ícones Redondos)',
+    label: 'Card 2: Manutenção de Fibra',
+    description: 'Foto ou ícone redondo que aparece no topo do card de Manutenção de Fibra.',
+    defaultSrc: '',
+    recommendedRatio: 'Foto Quadrada ou Redonda (1:1)',
+  },
+  {
+    key: 'service_icon_banho_gel',
+    section: 'Cards de Serviços (Fotos / Ícones Redondos)',
+    label: 'Card 3: Banho de Gel',
+    description: 'Foto ou ícone redondo que aparece no topo do card de Banho de Gel.',
+    defaultSrc: '',
+    recommendedRatio: 'Foto Quadrada ou Redonda (1:1)',
+  },
+  {
+    key: 'service_icon_manicure_pedicure',
+    section: 'Cards de Serviços (Fotos / Ícones Redondos)',
+    label: 'Card 4: Manicure & Pedicure',
+    description: 'Foto ou ícone redondo que aparece no topo do card de Manicure & Pedicure.',
+    defaultSrc: '',
+    recommendedRatio: 'Foto Quadrada ou Redonda (1:1)',
+  },
+  {
+    key: 'service_icon_spa_pes',
+    section: 'Cards de Serviços (Fotos / Ícones Redondos)',
+    label: 'Card 5: Spa dos Pés',
+    description: 'Foto ou ícone redondo que aparece no topo do card de Spa dos Pés.',
+    defaultSrc: '',
+    recommendedRatio: 'Foto Quadrada ou Redonda (1:1)',
+  },
+  {
+    key: 'service_icon_argiloterapia',
+    section: 'Cards de Serviços (Fotos / Ícones Redondos)',
+    label: 'Card 6: Argiloterapia & Óleos',
+    description: 'Foto ou ícone redondo que aparece no topo do card de Argiloterapia & Óleos.',
+    defaultSrc: '',
+    recommendedRatio: 'Foto Quadrada ou Redonda (1:1)',
   },
 
   // PÁGINA INICIAL (HOME)
