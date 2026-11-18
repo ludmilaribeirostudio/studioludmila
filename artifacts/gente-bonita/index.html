@@ -22,6 +22,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <!-- Oculta badge/banner/flag injetado pela Netlify -->
     <style>
+      #nl-badge-frame,
+      #nl-hud-frame,
+      iframe[id*="nl-"],
+      iframe[srcdoc*="netlify"],
       #netlify-badge,
       .netlify-badge,
       [data-netlify-badge],
@@ -34,9 +38,29 @@
         pointer-events: none !important;
         width: 0 !important;
         height: 0 !important;
-        z-index: -9999 !important;
+        max-width: 0 !important;
+        max-height: 0 !important;
+        clip: rect(0,0,0,0) !important;
+        position: absolute !important;
+        top: -9999px !important;
+        left: -9999px !important;
+        z-index: -99999 !important;
       }
     </style>
+    <script>
+      // Desativa e remove imediatamente o HUD/Badge injetado pela Netlify
+      (function() {
+        function removeNetlifyBadge() {
+          const frames = document.querySelectorAll('#nl-badge-frame, #nl-hud-frame, iframe[id*="nl-"], script[src*="hud?variant="], script[data-nf-variant]');
+          frames.forEach(el => el.remove());
+        }
+        removeNetlifyBadge();
+        const observer = new MutationObserver(removeNetlifyBadge);
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        window.addEventListener('DOMContentLoaded', removeNetlifyBadge);
+        window.addEventListener('load', removeNetlifyBadge);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
