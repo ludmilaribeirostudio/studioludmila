@@ -1045,7 +1045,7 @@ function Services({
 
 {/* Seção Convite para a Página Dedicada de Cursos */}
 function CoursesTeaser() {
-  const teaserImg = useSiteImage('hero_ludmila', '/images/ludmila-hero.jpg');
+  const teaserImg = useSiteImage('cursos_teaser', '/images/ludmila-hero.jpg');
   return (
     <section id="cursos" className="scroll-mt-8 py-20 md:py-24" style={{ background: C.bgAlt }}>
       <div className="gb-shell">
@@ -1177,7 +1177,7 @@ function About() {
                     key={`about-carousel-1-${img1?.id || currentIndex}`}
                     src={img1?.url}
                     alt={img1?.caption || 'Atendimento no Studio Ludmila Ribeiro'}
-                    className="h-44 w-full object-cover object-top transition-transform duration-700 hover:scale-105 animate-in fade-in"
+                    className="aspect-square w-full object-cover object-center transition-transform duration-700 hover:scale-105 animate-in fade-in"
                   />
                   {img1?.caption && (
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
@@ -1194,7 +1194,7 @@ function About() {
                     key={`about-carousel-2-${img2?.id || nextIdx}`}
                     src={img2?.url}
                     alt={img2?.caption || 'Studio Ludmila Ribeiro'}
-                    className="h-44 w-full object-cover object-center transition-transform duration-700 hover:scale-105 animate-in fade-in"
+                    className="aspect-square w-full object-cover object-center transition-transform duration-700 hover:scale-105 animate-in fade-in"
                   />
                   {img2?.caption && (
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">

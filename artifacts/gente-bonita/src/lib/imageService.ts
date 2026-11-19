@@ -4,6 +4,7 @@ export type SiteImageKey =
   | 'logo_gold'
   | 'logo_white'
   | 'hero_ludmila'
+  | 'cursos_teaser'
   | 'about_1'
   | 'about_2'
   | 'cursos_hero'
@@ -102,6 +103,14 @@ export const SITE_IMAGES_REGISTRY: SiteImageMeta[] = [
     description: 'A foto principal de Ludmila Ribeiro que fica no arco elegante logo na abertura do site.',
     defaultSrc: '/images/ludmila-hero.jpg',
     recommendedRatio: 'Vertical (Proporção 3:4 recomendada)',
+  },
+  {
+    key: 'cursos_teaser',
+    section: 'Página Inicial (Seção Cursos / Mentoria)',
+    label: 'Foto da Seção de Cursos na Home',
+    description: 'Foto que aparece no card da seção "Educação & Mentoria Profissional" na página inicial, ao lado dos cursos em destaque. É independente da foto da Hero.',
+    defaultSrc: '/images/ludmila-hero.jpg',
+    recommendedRatio: 'Vertical (Proporção 4:5 recomendada)',
   },
   {
     key: 'about_1',
