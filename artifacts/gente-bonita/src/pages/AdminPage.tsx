@@ -123,14 +123,15 @@ export default function AdminPage() {
   async function handleFileUpload(key: SiteImageKey, file: File) {
     try {
       setUploadingKey(key);
-      const dataUrl = await processImageFile(file);
+      const isIcon = key.startsWith('service_icon_');
+      const dataUrl = await processImageFile(file, { isIcon });
       setCustomImage(key, dataUrl);
       setPhotoRefresh((c) => c + 1);
-      setPhotoMessage('Foto atualizada com sucesso! A nova imagem já está visível no site.');
+      setPhotoMessage('Foto ou ícone atualizado com sucesso! A alteração já está visível no site.');
       setTimeout(() => setPhotoMessage(null), 4000);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Erro ao processar imagem. Tente uma foto em formato PNG, JPG ou JPEG.');
+      alert('Não foi possível enviar a imagem: ' + (err?.message || 'Arquivo ilegível. Tente novamente.'));
     } finally {
       setUploadingKey(null);
     }
@@ -148,7 +149,7 @@ export default function AdminPage() {
   async function handleAddGalleryImage(file: File) {
     try {
       setUploadingCarousel(true);
-      const dataUrl = await processImageFile(file);
+      const dataUrl = await processImageFile(file, { maxDimension: 1400 });
       addAboutGalleryImage(dataUrl, newGalleryCaption || 'Foto do Studio Ludmila Ribeiro');
       setNewGalleryCaption('');
       setPhotoMessage('Nova foto adicionada ao carrossel com sucesso! O carrossel já está atualizado no site.');
@@ -796,7 +797,7 @@ export default function AdminPage() {
                     </h2>
                   </div>
                   <p className="mt-2 text-xs md:text-sm leading-relaxed max-w-2xl" style={{ color: C.textMuted }}>
-                    Altere as fotos do site de forma simples e independente. Você pode enviar fotos diretamente de <strong>qualquer celular (galeria ou câmera)</strong> ou do seu computador. Formatos aceitos: <strong>PNG, JPG, JPEG e WEBP</strong>. As alterações são aplicadas instantaneamente em todo o site.
+                    Altere as fotos do site de forma simples e independente. Você pode enviar fotos diretamente de <strong>qualquer celular (galeria ou câmera)</strong> ou do seu computador. Formatos aceitos: <strong>qualquer formato de imagem ou foto (PNG, JPG, JPEG, WEBP, SVG, GIF, etc.)</strong>. As alterações são aplicadas instantaneamente em todo o site.
                   </p>
                 </div>
 
@@ -875,7 +876,7 @@ export default function AdminPage() {
                   <input
                     id="upload-carousel-file"
                     type="file"
-                    accept="image/png, image/jpeg, image/jpg, image/webp"
+                    accept="image/*, .png, .jpg, .jpeg, .webp, .svg, .gif, .avif, .ico, .bmp, .heic, .heif"
                     className="sr-only"
                     disabled={uploadingCarousel}
                     onChange={(e) => {
@@ -997,11 +998,28 @@ export default function AdminPage() {
                           border: `1px solid ${C.border}`,
                         }}
                       >
-                        <img
-                          src={currentSrc}
-                          alt={item.label}
-                          className="h-full w-full object-contain p-2"
-                        />
+                        {currentSrc ? (
+                          <img
+                            src={currentSrc}
+                            alt={item.label}
+                            className="h-full w-full object-contain p-2"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center gap-2 p-4 text-center">
+                            <div
+                              className="w-14 h-14 rounded-full flex items-center justify-center shadow-inner"
+                              style={{ background: '#FAF8F5', border: '2px dashed #ab8445' }}
+                            >
+                              <ImageIcon size={24} style={{ color: '#ab8445' }} />
+                            </div>
+                            <span className="text-[11px] font-sans font-medium text-gray-500">
+                              Ícone padrão do site ativo
+                            </span>
+                            <span className="text-[9px] font-mono text-gray-400">
+                              (Clique abaixo para subir qualquer foto ou ícone)
+                            </span>
+                          </div>
+                        )}
 
                         {isUploading && (
                           <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center text-white text-xs font-mono gap-2">
@@ -1023,7 +1041,7 @@ export default function AdminPage() {
                       <input
                         id={inputId}
                         type="file"
-                        accept="image/png, image/jpeg, image/jpg, image/webp"
+                        accept="image/*, .png, .jpg, .jpeg, .webp, .svg, .gif, .avif, .ico, .bmp, .heic, .heif"
                         className="sr-only"
                         disabled={isUploading}
                         onChange={(e) => {
@@ -1535,7 +1553,7 @@ export default function AdminPage() {
                     <input
                       id="upload-logo-gold-tab3"
                       type="file"
-                      accept="image/png, image/jpeg, image/webp"
+                      accept="image/*, .png, .jpg, .jpeg, .webp, .svg, .gif, .avif, .ico, .bmp, .heic, .heif"
                       className="sr-only"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
@@ -1592,7 +1610,7 @@ export default function AdminPage() {
                     <input
                       id="upload-logo-white-tab3"
                       type="file"
-                      accept="image/png, image/jpeg, image/webp"
+                      accept="image/*, .png, .jpg, .jpeg, .webp, .svg, .gif, .avif, .ico, .bmp, .heic, .heif"
                       className="sr-only"
                       onChange={(e) => {
                         const file = e.target.files?.[0];

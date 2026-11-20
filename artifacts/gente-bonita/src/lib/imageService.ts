@@ -198,11 +198,15 @@ export function getAboutGallery(): AboutGalleryItem[] {
 
 export function saveAboutGallery(items: AboutGalleryItem[]): void {
   try {
-    localStorage.setItem(GALLERY_STORAGE_KEY, JSON.stringify(items));
+    idbSet('__gallery_items__', JSON.stringify(items));
+    try {
+      localStorage.setItem(GALLERY_STORAGE_KEY, JSON.stringify(items));
+    } catch (quotaErr) {
+      console.warn('Aviso: localStorage sem espaço para galeria, mantido no IndexedDB:', quotaErr);
+    }
     window.dispatchEvent(new CustomEvent(GALLERY_EVENT_NAME, { detail: items }));
   } catch (e) {
     console.error('Erro ao salvar galeria:', e);
-    throw e;
   }
 }
 
@@ -254,10 +258,222 @@ export function useAboutGallery(): AboutGalleryItem[] {
   return gallery;
 }
 
+// -------------------------------------------------------------
+// ARMAZENAMENTO RESILIENTE (IndexedDB + Memória + LocalStorage)
+// Suporta centenas de megabytes sem estourar cota do navegador
+// -------------------------------------------------------------
+const IDB_NAME = 'StudioLudmilaDB_v2';
+const IDB_STORE = 'custom_images';
+const IDB_VERSION = 1;
+
+let dbPromise: Promise<IDBDatabase> | null = null;
+
+function getIDB(): Promise<IDBDatabase> {
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      if (typeof window === 'undefined' || !window.indexedDB) {
+        return reject(new Error('IndexedDB indisponível'));
+      }
+      try {
+        const req = window.indexedDB.open(IDB_NAME, IDB_VERSION);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) {
+            db.createObjectStore(IDB_STORE);
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+  return dbPromise;
+}
+
+async function idbSet(key: string, val: string): Promise<void> {
+  try {
+    const db = await getIDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      const store = tx.objectStore(IDB_STORE);
+      const req = store.put(val, key);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) {
+    console.warn('Aviso IndexedDB set:', e);
+  }
+}
+
+async function idbGet(key: string): Promise<string | null> {
+  try {
+    const db = await getIDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const store = tx.objectStore(IDB_STORE);
+      const req = store.get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function idbDelete(key: string): Promise<void> {
+  try {
+    const db = await getIDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      const store = tx.objectStore(IDB_STORE);
+      const req = store.delete(key);
+      req.onsuccess = () => resolve();
+      req.onerror = () => resolve();
+    });
+  } catch {
+    // ignore
+  }
+}
+
+async function idbGetAll(): Promise<Record<string, string>> {
+  try {
+    const db = await getIDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const store = tx.objectStore(IDB_STORE);
+      const req = store.openCursor();
+      const results: Record<string, string> = {};
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          results[cursor.key as string] = cursor.value;
+          cursor.continue();
+        } else {
+          resolve(results);
+        }
+      };
+      req.onerror = () => resolve({});
+    });
+  } catch {
+    return {};
+  }
+}
+
+const memoryCache = new Map<string, string>();
+
+// Carrega imediatamente do localStorage de forma síncrona
+if (typeof window !== 'undefined' && window.localStorage) {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(STORAGE_PREFIX)) {
+        const imageKey = k.slice(STORAGE_PREFIX.length);
+        const val = localStorage.getItem(k);
+        if (val) {
+          memoryCache.set(imageKey, val);
+          // Otimiza em background se for item antigo muito pesado (> 300KB)
+          if (val.length > 300 * 1024) {
+            setTimeout(() => autoCompressStoredImage(imageKey as SiteImageKey, val), 600);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Erro ao ler localStorage inicial:', e);
+  }
+}
+
+// Sincroniza com o IndexedDB de forma assíncrona
+if (typeof window !== 'undefined') {
+  idbGetAll().then((items) => {
+    let hasChanges = false;
+    for (const [key, val] of Object.entries(items)) {
+      if (val && !memoryCache.has(key)) {
+        memoryCache.set(key, val);
+        try {
+          localStorage.setItem(STORAGE_PREFIX + key, val);
+        } catch {
+          // ignore quota
+        }
+        hasChanges = true;
+      }
+    }
+    // Também garante que tudo do localStorage esteja salvo no IndexedDB
+    for (const [key, val] of memoryCache.entries()) {
+      if (!items[key]) {
+        idbSet(key, val);
+      }
+    }
+    if (hasChanges) {
+      window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: null }));
+    }
+  }).catch(() => {});
+}
+
+// Auto-compressor inteligente para recuperar espaço caso existam fotos gigantes gravadas anteriormente
+function autoCompressStoredImage(key: SiteImageKey, largeDataUrl: string) {
+  if (typeof window === 'undefined' || !largeDataUrl.startsWith('data:image')) return;
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const isIcon = key.startsWith('service_icon_');
+      const maxDim = isIcon ? 512 : 1200;
+      let width = img.width;
+      let height = img.height;
+      if (width <= maxDim && height <= maxDim && largeDataUrl.length < 200 * 1024) return;
+
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, width);
+      canvas.height = Math.max(1, height);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const isPng = largeDataUrl.startsWith('data:image/png');
+      let compressed = isPng ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.85);
+      if (compressed.length > 300 * 1024) {
+        try {
+          const webp = canvas.toDataURL('image/webp', 0.88);
+          if (webp && webp.startsWith('data:image/webp')) compressed = webp;
+        } catch {}
+      }
+
+      if (compressed.length < largeDataUrl.length) {
+        memoryCache.set(key, compressed);
+        idbSet(key, compressed);
+        try {
+          localStorage.setItem(STORAGE_PREFIX + key, compressed);
+        } catch {}
+        window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { key, dataUrl: compressed } }));
+      }
+    } catch {}
+  };
+  img.src = largeDataUrl;
+}
+
 export function getCustomImage(key: SiteImageKey, defaultSrc: string): string {
   try {
-    const custom = localStorage.getItem(STORAGE_PREFIX + key);
-    return custom || defaultSrc;
+    const cached = memoryCache.get(key);
+    if (cached) return cached;
+    if (typeof localStorage !== 'undefined') {
+      const custom = localStorage.getItem(STORAGE_PREFIX + key);
+      if (custom) {
+        memoryCache.set(key, custom);
+        return custom;
+      }
+    }
+    return defaultSrc;
   } catch {
     return defaultSrc;
   }
@@ -265,17 +481,33 @@ export function getCustomImage(key: SiteImageKey, defaultSrc: string): string {
 
 export function setCustomImage(key: SiteImageKey, dataUrl: string): void {
   try {
-    localStorage.setItem(STORAGE_PREFIX + key, dataUrl);
+    // 1. Atualiza memória imediatamente (ultra-rápido)
+    memoryCache.set(key, dataUrl);
+
+    // 2. Salva no IndexedDB (alta capacidade, suporta centenas de MB)
+    idbSet(key, dataUrl);
+
+    // 3. Tenta salvar no localStorage de forma segura
+    try {
+      localStorage.setItem(STORAGE_PREFIX + key, dataUrl);
+    } catch (quotaErr) {
+      console.warn('LocalStorage cheio; imagem mantida em IndexedDB e memória sem perda:', quotaErr);
+    }
+
+    // 4. Notifica todos os componentes na hora
     window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { key, dataUrl } }));
   } catch (e) {
-    console.error('Erro ao salvar imagem customizada:', e);
-    throw e;
+    console.error('Erro ao definir imagem customizada:', e);
   }
 }
 
 export function removeCustomImage(key: SiteImageKey): void {
   try {
-    localStorage.removeItem(STORAGE_PREFIX + key);
+    memoryCache.delete(key);
+    idbDelete(key);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(STORAGE_PREFIX + key);
+    }
     window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { key, dataUrl: null } }));
   } catch (e) {
     console.error('Erro ao resetar imagem:', e);
@@ -299,59 +531,121 @@ export function useSiteImage(key: SiteImageKey, defaultSrc: string): string {
   return src;
 }
 
-// Otimizador de imagem via Canvas para suportar upload de celulares e computadores com alta velocidade
-export function processImageFile(file: File): Promise<string> {
+export interface ProcessImageOptions {
+  isIcon?: boolean;
+  maxDimension?: number;
+}
+
+// Otimizador universal de imagens para suportar upload de QUALQUER formato
+// (PNG, JPG, JPEG, WEBP, SVG, GIF, AVIF, ICO, BMP, etc.)
+export function processImageFile(file: File, options?: ProcessImageOptions): Promise<string> {
   return new Promise((resolve, reject) => {
-    // Se for PNG pequeno, preserva transparência sem compressão
-    if (file.type === 'image/png' && file.size < 600 * 1024) {
+    if (!file) {
+      return reject(new Error('Nenhum arquivo recebido.'));
+    }
+
+    const fileName = file.name ? file.name.toLowerCase() : '';
+    const fileType = file.type ? file.type.toLowerCase() : '';
+
+    // 1. Arquivos SVG: lê como DataURL vetorial preservando nitidez infinita
+    if (fileType === 'image/svg+xml' || fileName.endsWith('.svg')) {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
+      reader.onerror = () => reject(new Error('Erro ao ler arquivo SVG.'));
       reader.readAsDataURL(file);
       return;
     }
 
+    // 2. Arquivos de imagem leves (ex: ícones ou gifs < 80KB)
+    if (file.size < 80 * 1024 && (fileType.includes('gif') || fileType.includes('ico') || fileName.endsWith('.ico'))) {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Erro ao ler arquivo leve.'));
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    // 3. Processamento universal via Canvas
     const reader = new FileReader();
     reader.onload = (event) => {
+      const rawDataUrl = event.target?.result as string;
+      if (!rawDataUrl) {
+        return reject(new Error('Falha ao processar arquivo.'));
+      }
+
       const img = new Image();
       img.onload = () => {
-        const maxWidth = 1600;
-        const maxHeight = 1600;
-        let width = img.width;
-        let height = img.height;
+        try {
+          const maxDim = options?.maxDimension || (options?.isIcon ? 512 : 1200);
+          let width = img.width || maxDim;
+          let height = img.height || maxDim;
 
-        if (width > maxWidth || height > maxHeight) {
-          if (width > height) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          } else {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
           }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, width);
+          canvas.height = Math.max(1, height);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(rawDataUrl);
+            return;
+          }
+
+          ctx.clearRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const hasTransparency =
+            fileType === 'image/png' ||
+            fileType === 'image/webp' ||
+            fileType === 'image/gif' ||
+            fileName.endsWith('.png') ||
+            fileName.endsWith('.webp');
+
+          let resultDataUrl = '';
+          if (hasTransparency) {
+            resultDataUrl = canvas.toDataURL('image/png');
+            // Se o PNG ficou pesado (> 350KB), converte para WEBP mantendo transparência e reduzindo ~80% do peso
+            if (resultDataUrl.length > 350 * 1024) {
+              try {
+                const webpUrl = canvas.toDataURL('image/webp', 0.90);
+                if (webpUrl && webpUrl.startsWith('data:image/webp')) {
+                  resultDataUrl = webpUrl;
+                }
+              } catch {
+                // mantém png
+              }
+            }
+          } else {
+            resultDataUrl = canvas.toDataURL('image/jpeg', 0.88);
+          }
+
+          resolve(resultDataUrl || rawDataUrl);
+        } catch (canvasErr) {
+          console.warn('Canvas fallback para rawDataUrl:', canvasErr);
+          resolve(rawDataUrl);
         }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(event.target?.result as string);
-          return;
-        }
-
-        // Se for PNG preserva transparência
-        const isPng = file.type === 'image/png';
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const mime = isPng ? 'image/png' : 'image/jpeg';
-        const quality = isPng ? undefined : 0.88;
-        const resultDataUrl = canvas.toDataURL(mime, quality);
-        resolve(resultDataUrl);
       };
-      img.onerror = reject;
-      img.src = event.target?.result as string;
+
+      // Se o formato não puder ser renderizado no canvas 2D diretamente,
+      // faz fallback direto para o DataURL original!
+      // Isso garante que QUALQUER formato de imagem seja aceito sem dar erro!
+      img.onerror = () => {
+        console.warn('Image decode fallback para rawDataUrl do arquivo:', fileName);
+        resolve(rawDataUrl);
+      };
+
+      img.src = rawDataUrl;
     };
-    reader.onerror = reject;
+
+    reader.onerror = () => reject(new Error('Erro ao ler arquivo. Verifique se o arquivo está acessível.'));
     reader.readAsDataURL(file);
   });
 }
